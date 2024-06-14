@@ -93,11 +93,12 @@ describe('TarifaClaseService', () => {
       const nombre = 'Clase Económica';
       const tarifaClase = [new TarifaClase()];
       jest.spyOn(transaccionService, 'transaction').mockResolvedValue(tarifaClase);
-
+      //devuelve objecto
       expect(await service.findbyName(nombre)).toEqual({
         status: 200,
         message: Exito_Operaciones.Consultar,
       });
+      //verificar que se llame con argumentos que especifique
       expect(transaccionService.transaction).toHaveBeenCalledWith(
         Tipo_Transaccion.Consultar_Con_Parametros,
         TarifaClase,

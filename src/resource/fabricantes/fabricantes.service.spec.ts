@@ -36,6 +36,7 @@ describe('FabricantesService', () => {
     fabricanteRepository = module.get<Repository<Fabricante>>(getRepositoryToken(Fabricante));
     transaccionService = module.get<TransaccionService>(TransaccionService);
   });
+  
 
   describe('create', () => {
     it('deberia crear un nuevo fabricante', async () => {
@@ -125,7 +126,17 @@ describe('FabricantesService', () => {
       );
     });
   });
+  describe('handleDBExceptions', () => {
+    it('debería manejar excepciones de base de datos correctamente', () => {
+      const errorMock = new Error('Simulated database error');
 
+      const loggerSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+      
+      expect(() => service['handleDBExceptions'](errorMock)).toThrowError('Unexpected error occurred');
+
+      expect(loggerSpy).toHaveBeenCalledWith(errorMock);
+    });
+  });
   describe('update', () => {
     it('debe actualizar un fabricante', async () => {
       const id = 1;

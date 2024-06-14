@@ -1,15 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryResult, Repository } from 'typeorm';
 import { AvionesService } from './aviones.service';
 import { Avion } from '../../resource/aviones/entities/avion.entity';
 import { TransaccionService } from '../../common/transaction/transaccion.service';
 import { CreateAvionDto } from '../../resource/aviones/dto/create-avion.dto';
 import { UpdateAvionDto } from '../../resource/aviones/dto/update-avion.dto';
-import { Tipo_Transaccion } from '../../common/enums/tipo_Transaccion.enum';
-import { ModeloAvion } from '../../resource/modelos/entities/modelo-avion.entity';
-import { Estado_Logico } from '../../common/enums/estado_logico.enum';
 import { ESTADO_OPERATIVO } from '../../common/enums/estado-operativo.enum';
+import { Estado_Logico } from '../../common/enums/estado_logico.enum';
 
 const mockAvionRepository = {
   find: jest.fn(),
@@ -46,6 +44,18 @@ describe('AvionesService', () => {
 
   it('debería estar definido', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('handleDBExceptions', () => {
+    it('debería manejar excepciones de base de datos correctamente', () => {
+      const errorMock = new Error('Simulated database error');
+  
+      const loggerSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+  
+      expect(() => service['handleDBExceptions'](errorMock)).toThrowError('Unexpected error occurred');
+  
+      expect(loggerSpy).toHaveBeenCalledWith(errorMock);
+    });
   });
 
   describe('create', () => {
@@ -102,10 +112,30 @@ describe('AvionesService', () => {
   });
 
   describe('findbyModelo', () => {
+    it('debería retornar un error si la búsqueda de aviones falla', async () => {
+      // Configura el mock para la primera llamada que busca el modelo del avión
+      const modeloAvionId = 1;
+      mockTransaccionService.transaction.mockResolvedValueOnce([{ modelo_Avion_Id: modeloAvionId }]);
+  
+      // Configura el mock para la segunda llamada que busca aviones por modelo y fuerza un error
+      mockTransaccionService.transaction.mockResolvedValueOnce('Error');
+  
+      const result = await service.findbyModelo('ModeloX');
+  
+      // Verifica que el servicio retorna el mensaje de error correcto
+      expect(result).toEqual({
+        status: 400,
+        message: 'Error al consultar',
+      
+    });
+  });
+  
     it('debería retornar aviones por modelo', async () => {
+      const modeloAvionId = 1;
       mockTransaccionService.transaction
-        .mockResolvedValueOnce([{ modelo_Avion_Id: 1 }])
-        .mockResolvedValueOnce([{ modeloAvionId: 1,
+        .mockResolvedValueOnce([{ modelo_Avion_Id: modeloAvionId }])
+        .mockResolvedValueOnce([{
+          modeloAvionId,
           fabricanteId: 1,
           avion_Capacidad_Pasajeros: 150,
           avion_Capacidad_Carga: 2000,
@@ -114,11 +144,14 @@ describe('AvionesService', () => {
           avion_Estado_Operativo: ESTADO_OPERATIVO.OPERATIVO,
           avion_Estado_Logico: Estado_Logico.ACTIVO,
           avion_Tipo_Motor: 'Turbofan',
-          avion_Autonomia: '10 horas' }]);
+          avion_Autonomia: '10 horas',
+        
+        }]);
       const result = await service.findbyModelo('ModeloX');
       expect(result).toEqual({
         status: 200,
-        message: [{ modeloAvionId: 1,
+        message: [{
+          modeloAvionId:1,
           fabricanteId: 1,
           avion_Capacidad_Pasajeros: 150,
           avion_Capacidad_Carga: 2000,
@@ -127,9 +160,11 @@ describe('AvionesService', () => {
           avion_Estado_Operativo: ESTADO_OPERATIVO.OPERATIVO,
           avion_Estado_Logico: Estado_Logico.ACTIVO,
           avion_Tipo_Motor: 'Turbofan',
-          avion_Autonomia: '10 horas' }],
+          avion_Autonomia: '10 horas'
+        }],
       });
     });
+    
 
     it('debería retornar un error si el modelo no es encontrado', async () => {
       mockTransaccionService.transaction.mockResolvedValue('Error');
@@ -187,3 +222,5 @@ describe('AvionesService', () => {
     });
   });
 });
+
+
